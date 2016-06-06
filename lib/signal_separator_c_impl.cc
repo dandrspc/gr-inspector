@@ -156,14 +156,10 @@ namespace gr {
     void
     signal_separator_c_impl::handle_msg(pmt::pmt_t msg) {
       // clear all vectors for recalculation
-
-      d_rotators.clear();
-
       // free allocated space
-      free_allocation();
       std::vector<std::vector<float> > newmap = unpack_message(msg);
 
-      // calculate filters
+      // calculate filters if bandwidth or signal count changed
       // TODO: make this more efficient
       bool rebuild = false;
       if(newmap.size() == d_rf_map.size()) {
@@ -183,7 +179,9 @@ namespace gr {
         d_decimations.clear();
         d_decimations.resize(d_rf_map.size());
         d_filterbank.resize(d_rf_map.size());
+        free_allocation();
       }
+      d_rotators.clear();
       d_rotators.resize(d_rf_map.size());
       for (unsigned int i = 0; i < d_rf_map.size(); i++) {
         if(rebuild) {

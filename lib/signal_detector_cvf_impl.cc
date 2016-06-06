@@ -284,7 +284,7 @@ namespace gr {
             change = true;
           }
           if (std::abs(edges->at(i).at(1) - d_signal_edges.at(i).at(1)) >
-              0.01 * d_signal_edges.at(i).at(1)) {
+              0) {
             change = true;
           }
         }
