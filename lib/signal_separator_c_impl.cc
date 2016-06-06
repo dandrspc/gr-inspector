@@ -29,9 +29,11 @@ namespace gr {
   namespace inspector {
 
     signal_separator_c::sptr
-    signal_separator_c::make(double samp_rate, int window, float trans_width, int oversampling) {
+    signal_separator_c::make(double samp_rate, int window, float trans_width,
+                             int oversampling) {
       return gnuradio::get_initial_sptr
-              (new signal_separator_c_impl(samp_rate, window, trans_width, oversampling));
+              (new signal_separator_c_impl(samp_rate, window, trans_width,
+                                           oversampling));
     }
 
     //<editor-fold desc="Initalization">
@@ -95,10 +97,8 @@ namespace gr {
     void
     signal_separator_c_impl::build_filter(unsigned int signal) {
       // calculate signal parameters
-      double freq_center = ((d_rf_map.at(signal)).at(1) +
-                            (d_rf_map.at(signal)).at(0)) / 2;
-      double bandwidth = (d_rf_map.at(signal)).at(1) -
-                         (d_rf_map.at(signal)).at(0);
+      double freq_center = d_rf_map[signal][0];
+      double bandwidth = d_rf_map[signal][1];
       // if only one bin detected, we still need a bandwidth > 0
       if (bandwidth == 0) {
         bandwidth = 1;
@@ -118,16 +118,23 @@ namespace gr {
       for(unsigned int i = 0; i < d_taps.size(); i++) {
         ctaps[i] = d_taps[i] * exp(gr_complex(0, i * fwT0));
       }
-      // create rotator for current signal
-      blocks::rotator* rotator = new blocks::rotator();
-      rotator->set_phase_incr(exp(gr_complex(0, -fwT0 * decim)));
-      d_rotators[signal] = rotator;
+
 
       // build filter here
       filter::kernel::fir_filter_ccc*
               filter = new filter::kernel::fir_filter_ccc(decim, ctaps);
 
       d_filterbank[signal] = filter;
+    }
+
+    void
+    signal_separator_c_impl::build_rotator(unsigned int signal) {
+      // create rotator for current signal
+      blocks::rotator* rotator = new blocks::rotator();
+      float fwT0 = 2 * M_PI * d_rf_map[signal][0] / d_samp_rate;
+      int decim = d_decimations[signal];
+      rotator->set_phase_incr(exp(gr_complex(0, -fwT0 * decim)));
+      d_rotators[signal] = rotator;
     }
 
     void
@@ -149,36 +156,55 @@ namespace gr {
     void
     signal_separator_c_impl::handle_msg(pmt::pmt_t msg) {
       // clear all vectors for recalculation
-      d_filterbank.clear();
-      d_decimations.clear();
+
       d_rotators.clear();
 
       // free allocated space
       free_allocation();
-
-      unpack_message(msg);
+      std::vector<std::vector<float> > newmap = unpack_message(msg);
 
       // calculate filters
       // TODO: make this more efficient
-      d_decimations.resize(d_rf_map.size());
+      bool rebuild = false;
+      if(newmap.size() == d_rf_map.size()) {
+        for (unsigned int i = 0; i < newmap.size(); i++) {
+          if(newmap[i][1] != d_rf_map[i][1]) {
+            rebuild = true;
+            break;
+          }
+        }
+      }
+      else {
+        rebuild = true;
+      }
+      d_rf_map = newmap;
+      if(rebuild) {
+        d_filterbank.clear();
+        d_decimations.clear();
+        d_decimations.resize(d_rf_map.size());
+        d_filterbank.resize(d_rf_map.size());
+      }
       d_rotators.resize(d_rf_map.size());
-      d_filterbank.resize(d_rf_map.size());
       for (unsigned int i = 0; i < d_rf_map.size(); i++) {
-        build_filter(i);
+        if(rebuild) {
+          build_filter(i);
+        }
+        build_rotator(i);
       }
     }
 
-    void
+    std::vector<std::vector<float> >
     signal_separator_c_impl::unpack_message(pmt::pmt_t msg) {
-      d_rf_map.clear();
+      std::vector<std::vector<float> > rf_map;
       std::vector<float> temp;
       for (unsigned int i = 0; i < pmt::length(msg); i++) {
         pmt::pmt_t row = pmt::vector_ref(msg, i);
         temp.clear();
         temp.push_back(pmt::f32vector_ref(row, 0));
         temp.push_back(pmt::f32vector_ref(row, 1));
-        d_rf_map.push_back(temp);
+        rf_map.push_back(temp);
       }
+      return rf_map;
     }
 
     // pack vector in array to send with message

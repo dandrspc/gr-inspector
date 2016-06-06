@@ -34,12 +34,13 @@ namespace gr {
     signal_detector_cvf::make(double samp_rate, int fft_len,
                              int window_type, float threshold,
                              float sensitivity, bool auto_threshold,
-                             float average) {
+                             float average, float quantization) {
       return gnuradio::get_initial_sptr
               (new signal_detector_cvf_impl(samp_rate, fft_len,
                                            window_type,
                                            threshold, sensitivity,
-                                           auto_threshold, average));
+                                           auto_threshold, average,
+                                           quantization));
     }
 
     //<editor-fold desc="Initalization">
@@ -53,7 +54,8 @@ namespace gr {
                                                      float threshold,
                                                      float sensitivity,
                                                      bool auto_threshold,
-                                                     float average)
+                                                     float average,
+                                                     float quantization)
             : sync_decimator("signal_detector_cvf",
                         gr::io_signature::make(1, 1,
                                                sizeof(gr_complex)),
@@ -70,6 +72,7 @@ namespace gr {
       set_auto_threshold(auto_threshold);
       set_average(average);
       message_port_register_out(pmt::intern("map_out"));
+      set_quantization(quantization);
 
       //fill properties
       build_window();
@@ -261,8 +264,8 @@ namespace gr {
       pmt::pmt_t msg = pmt::make_vector(signal_count, pmt::PMT_NIL);
       for (unsigned i = 0; i < signal_count; i++) {
         pmt::pmt_t curr_edge = pmt::make_f32vector(2, 0.0);
-        pmt::f32vector_set(curr_edge, 0, d_signal_edges.at(i).at(0));
-        pmt::f32vector_set(curr_edge, 1, d_signal_edges.at(i).at(0));
+        pmt::f32vector_set(curr_edge, 0, d_signal_edges[i][0]);
+        pmt::f32vector_set(curr_edge, 1, d_signal_edges[i][1]);
         pmt::vector_set(msg, i, curr_edge);
       }
       return msg;
@@ -316,12 +319,18 @@ namespace gr {
       }
 
       std::vector<std::vector<unsigned int> > flanks = find_signal_edges();
-
       std::vector<std::vector<float> > rf_map;
+      float bandwidth = 0;
+      float freq_c = 0;
+      int quantization = (int)floor(d_quantization*d_samp_rate);
       for (unsigned int i = 0; i < flanks.size(); i++) {
         std::vector<float> temp;
-        temp.push_back(d_freq[flanks[i][0]]);
-        temp.push_back(d_freq[flanks[i][1]]);
+        bandwidth = d_freq[flanks[i][1]] - d_freq[flanks[i][0]];
+        freq_c = (d_freq[flanks[i][0]] + d_freq[flanks[i][1]])/2;
+        //quantize bandwidth
+        bandwidth = quantization*round(bandwidth/quantization);
+        temp.push_back(freq_c);
+        temp.push_back(bandwidth);
         rf_map.push_back(temp);
       }
 

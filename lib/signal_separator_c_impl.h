@@ -47,7 +47,8 @@ namespace gr {
 
 
     public:
-      signal_separator_c_impl(double samp_rate, int window, float trans_width, int oversampling);
+      signal_separator_c_impl(double samp_rate, int window,
+             float trans_width, int oversampling);
 
       ~signal_separator_c_impl();
 
@@ -92,6 +93,7 @@ namespace gr {
       //</editor-fold>
 
       void build_filter(unsigned int signal);
+      void build_rotator(unsigned int signal);
 
       void add_filter(filter::kernel::fir_filter_ccc* filter);
 
@@ -100,7 +102,7 @@ namespace gr {
       void handle_msg(pmt::pmt_t msg);
 
       pmt::pmt_t pack_message();
-      void unpack_message(pmt::pmt_t msg);
+      std::vector<std::vector<float> > unpack_message(pmt::pmt_t msg);
 
       // Where all the action really happens
       void forecast(int noutput_items,
