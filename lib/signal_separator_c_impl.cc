@@ -47,11 +47,10 @@ namespace gr {
                         gr::io_signature::make(0, 0, 0)) {
       // fill properties
 
-      //TODO: write setter and getter
-      set_window(window);
-      set_samp_rate(samp_rate);
-      set_trans_width(trans_width);
-      set_oversampling(oversampling);
+      d_window = (filter::firdes::win_type )window;
+      d_samp_rate = samp_rate;
+      d_trans_width = trans_width;
+      d_oversampling = oversampling;
 
       // message port
       message_port_register_out(pmt::intern("msg_out"));
@@ -149,17 +148,20 @@ namespace gr {
     void
     signal_separator_c_impl::handle_msg(pmt::pmt_t msg) {
       // clear all vectors for recalculation
-      d_filterbank.clear();
-      d_decimations.clear();
-      d_rotators.clear();
 
       // free allocated space
       free_allocation();
-
       unpack_message(msg);
-
       // calculate filters
       // TODO: make this more efficient
+      rebuild_all_filters();
+    }
+
+    void
+    signal_separator_c_impl::rebuild_all_filters() {
+      d_filterbank.clear();
+      d_decimations.clear();
+      d_rotators.clear();
       d_decimations.resize(d_rf_map.size());
       d_rotators.resize(d_rf_map.size());
       d_filterbank.resize(d_rf_map.size());
@@ -221,6 +223,7 @@ namespace gr {
       // apply all filters on input signal
       // iterate over each filter
       for (unsigned int i = 0; i < d_filterbank.size(); i++) {
+        //std::cout << "Appling filter " << i << std::endl;
         // size of filter output
         int size = ninput_items[0]/d_decimations[i];
         // allocate enough space for result

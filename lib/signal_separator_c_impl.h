@@ -62,6 +62,7 @@ namespace gr {
 
       void set_samp_rate(double d_samp_rate) {
         signal_separator_c_impl::d_samp_rate = d_samp_rate;
+        rebuild_all_filters();
       }
 
       filter::firdes::win_type window() const {
@@ -71,6 +72,7 @@ namespace gr {
       void set_window(int d_window) {
         signal_separator_c_impl::d_window =
                 static_cast<filter::firdes::win_type >(d_window);
+        rebuild_all_filters();
       }
 
       float trans_width() const {
@@ -79,6 +81,7 @@ namespace gr {
 
       void set_trans_width(float d_trans_width) {
         signal_separator_c_impl::d_trans_width = d_trans_width;
+
       }
 
       int oversampling() const {
@@ -87,11 +90,14 @@ namespace gr {
 
       void set_oversampling(int d_oversampling) {
         signal_separator_c_impl::d_oversampling = d_oversampling;
+        rebuild_all_filters();
       }
 
       //</editor-fold>
 
       void build_filter(unsigned int signal);
+
+      void rebuild_all_filters();
 
       void add_filter(filter::kernel::fir_filter_ccc* filter);
 
