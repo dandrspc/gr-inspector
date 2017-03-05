@@ -29,6 +29,7 @@ import tensorflow as tf
 from tensorflow.contrib.session_bundle import manifest_pb2
 from tensorflow.contrib.session_bundle import constants
 from tensorflow.contrib.session_bundle import session_bundle
+from tensorflow.contrib.session_bundle import bundle_shim
  
 import pmt
 import numpy as np
@@ -76,8 +77,10 @@ class tfmodel_vcf(gr.sync_block):
     ## \param output_graph_path Path of graph file
     def load_graph(self, output_graph_path):
 
-        sess, meta_graph_def = session_bundle.load_session_bundle_from_path(
-            output_graph_path)
+        #sess, meta_graph_def = session_bundle.load_session_bundle_from_path(
+        #    output_graph_path)
+        sess, meta_graph_def = bundle_shim.load_session_bundle_or_saved_model_bundle_from_path(output_graph_path)
+
 
         with sess.as_default():
 
@@ -132,7 +135,10 @@ class tfmodel_vcf(gr.sync_block):
         ne = []
         for v in tensordata:
             try:
+                #print("In: ",self.inp,"Out : ",self.out)
+                #print("Inp ",v)
                 outp = self.sess.run(self.out, feed_dict={self.inp: [v]})[0]
+                #print("OUTP ",outp)
                 ne.append(outp)
             except tf.errors.InvalidArgumentError:
                 print("Invalid size of input vector to TensorFlow model")
