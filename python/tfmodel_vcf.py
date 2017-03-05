@@ -80,7 +80,8 @@ class tfmodel_vcf(gr.sync_block):
         #sess, meta_graph_def = session_bundle.load_session_bundle_from_path(
         #    output_graph_path)
         sess, meta_graph_def = bundle_shim.load_session_bundle_or_saved_model_bundle_from_path(output_graph_path)
-
+        #sess, meta_graph_def = session_bundle.load_session_bundle_from_path(
+        #    output_graph_path)
 
         with sess.as_default():
 
